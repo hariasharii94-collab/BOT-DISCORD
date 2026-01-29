@@ -20,26 +20,26 @@ const client = new Client({
     partials: [Partials.Channel]
 });
 
-// ===== ADMIN CHECK (USER ID) =====
+// ================= ADMIN CHECK (USER ID) =================
 const ADMIN_IDS = process.env.ADMIN_USER_ID.split(',');
 
 function isAdmin(userId) {
     return ADMIN_IDS.includes(userId);
 }
 
-// ===== READY =====
+// ================= READY =================
 client.once('ready', () => {
     console.log(`✅ Bot online: ${client.user.tag}`);
 });
 
-// ===== COMMAND ?ticket =====
+// ================= COMMAND ?ticket =================
 client.on('messageCreate', async (message) => {
-    if (message.content !== '?ticket') return;
     if (message.author.bot) return;
+    if (message.content !== '?ticket') return;
 
     const embed = new EmbedBuilder()
-        .setTitle('🎫 Ticket System')
-        .setDescription('Klik tombol di bawah untuk membuat ticket order / support.')
+        .setTitle('🎫 Ticket Order')
+        .setDescription('Klik tombol di bawah untuk membuat ticket order.')
         .setColor(0x00ff99);
 
     const row = new ActionRowBuilder().addComponents(
@@ -52,25 +52,23 @@ client.on('messageCreate', async (message) => {
     message.channel.send({ embeds: [embed], components: [row] });
 });
 
-// ===== INTERACTIONS =====
+// ================= INTERACTION =================
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
-    // === CREATE TICKET ===
+    // ===== CREATE TICKET =====
     if (interaction.customId === 'create_ticket') {
         const channelName = `ticket-${interaction.user.username.toLowerCase()}`;
 
-        const existing = interaction.guild.channels.cache.find(
-            ch => ch.name === channelName
-        );
-        if (existing) {
+        const exists = interaction.guild.channels.cache.find(c => c.name === channelName);
+        if (exists) {
             return interaction.reply({
-                content: '❌ Kamu masih punya ticket yang aktif.',
+                content: '❌ Kamu masih punya ticket aktif.',
                 ephemeral: true
             });
         }
 
-        const ticketChannel = await interaction.guild.channels.create({
+        const channel = await interaction.guild.channels.create({
             name: channelName,
             type: ChannelType.GuildText,
             permissionOverwrites: [
@@ -80,17 +78,20 @@ client.on('interactionCreate', async (interaction) => {
                 },
                 {
                     id: interaction.user.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+                    allow: [
+                        PermissionFlagsBits.ViewChannel,
+                        PermissionFlagsBits.SendMessages
+                    ]
                 }
             ]
         });
 
         const embed = new EmbedBuilder()
-            .setTitle('📦 Order Ticket')
+            .setTitle('📦 ORDER MENU')
             .setDescription(
                 '**Produk A** — Rp20.000\n' +
                 '**Produk B** — Rp35.000\n\n' +
-                'Pilih produk di bawah.'
+                'Silakan pilih produk di bawah.'
             )
             .setColor(0x5865F2);
 
@@ -109,37 +110,56 @@ client.on('interactionCreate', async (interaction) => {
                 .setStyle(ButtonStyle.Danger)
         );
 
-        await ticketChannel.send({
+        await channel.send({
             content: `<@${interaction.user.id}>`,
             embeds: [embed],
             components: [row]
         });
 
         return interaction.reply({
-            content: `✅ Ticket dibuat: ${ticketChannel}`,
+            content: `✅ Ticket dibuat: ${channel}`,
             ephemeral: true
         });
     }
 
-    // === BUY PRODUCT ===
+    // ===== BUY PRODUCT =====
     if (interaction.customId === 'buy_a' || interaction.customId === 'buy_b') {
         const produk =
-            interaction.customId === 'buy_a' ? 'Produk A (20K)' : 'Produk B (35K)';
+            interaction.customId === 'buy_a'
+                ? 'Produk A (Rp20.000)'
+                : 'Produk B (Rp35.000)';
+
+        const paymentEmbed = new EmbedBuilder()
+            .setTitle('💳 PEMBAYARAN QRIS')
+            .setDescription(
+                `**Produk:** ${produk}\n\n` +
+                '**Metode:** QRIS GoPay Merchant\n' +
+                '**Atas Nama:** Obsidian Shop\n\n' +
+                '📸 Setelah bayar, kirim **bukti transfer** di channel ini.'
+            )
+            .setImage(process.env.QR_IMAGE_URL)
+            .setColor(0x00ff99)
+            .setFooter({ text: 'Pembayaran diproses manual oleh admin' });
+
+        await interaction.channel.send({ embeds: [paymentEmbed] });
 
         await interaction.reply({
-            content: `✅ Kamu memilih **${produk}**.\nAdmin akan memproses.`,
+            content: '✅ Silakan scan QR & lakukan pembayaran.',
             ephemeral: true
         });
 
-        const logChannel = await client.channels.fetch(process.env.ADMIN_CHANNEL_ID);
-        if (logChannel) {
-            logChannel.send(
-                `🛒 **ORDER MASUK**\nUser: ${interaction.user.tag}\nProduk: **${produk}**\nChannel: ${interaction.channel}`
+        const log = await client.channels.fetch(process.env.ADMIN_CHANNEL_ID);
+        if (log) {
+            log.send(
+                `💰 **ORDER BARU**\n` +
+                `User: ${interaction.user.tag}\n` +
+                `Produk: ${produk}\n` +
+                `Channel: ${interaction.channel}`
             );
         }
     }
 
-    // === CLOSE TICKET (ADMIN ONLY) ===
+    // ===== CLOSE TICKET (ADMIN ONLY) =====
     if (interaction.customId === 'close_ticket') {
         if (!isAdmin(interaction.user.id)) {
             return interaction.reply({
@@ -149,7 +169,7 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         await interaction.reply({
-            content: '🔒 Ticket ditutup.',
+            content: '🔒 Ticket akan ditutup.',
             ephemeral: true
         });
 
@@ -159,6 +179,6 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-// ===== LOGIN =====
+// ================= LOGIN =================
 client.login(process.env.TOKEN);
 
