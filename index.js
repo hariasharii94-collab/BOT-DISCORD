@@ -89,9 +89,21 @@ client.on('interactionCreate', async (interaction) => {
         const embed = new EmbedBuilder()
             .setTitle('📦 ORDER MENU')
             .setDescription(
-                '**Produk A** — Rp20.000\n' +
-                '**Produk B** — Rp35.000\n\n' +
-                'Silakan pilih produk di bawah.'
+                "**Paket A**\n" +
+                "• Rp.20.000 — 1 Key / 1 Device\n\n" +
+                "**Paket B**\n" +
+                "• Rp.35.000 — 1 Key / hingga 5 Device\n" +
+                "**(Permanent)**\n\n" +
+                "**Benefit**\n" +
+                "• Full fitur\n" +
+                "• Stabil & smooth\n" +
+                "• Update gratis\n" +
+                "• Support prioritas\n" +
+                "• Device fleksibel\n\n" +
+                "**Rekomendasi**\n" +
+                "• Pribadi → 20K\n" +
+                "• Banyak device → 35K.\n\n" +
+                "**Silakan pilih produk di bawah.**"
             )
             .setColor(0x5865F2);
 
