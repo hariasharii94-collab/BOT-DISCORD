@@ -29,7 +29,7 @@ function isAdmin(userId) {
 
 // ================= READY =================
 client.once('ready', () => {
-    console.log(`✅ Bot online: ${client.user.tag}`);
+    console.log(` Bot online: ${client.user.tag}`);
 });
 
 // ================= COMMAND ?ticket =================
@@ -163,8 +163,8 @@ client.on('interactionCreate', async (interaction) => {
         const log = await client.channels.fetch(process.env.ADMIN_CHANNEL_ID);
         if (log) {
             log.send(
-                `💰 **ORDER BARU**\n` +
-                `User: ${interaction.user.tag}\n` +
+                `💰 **TRANSAKSI SUKSES**\n` +
+                `Buyer: ${interaction.user.tag}\n` +
                 `Produk: ${produk}\n` +
                 `Channel: ${interaction.channel}`
             );
