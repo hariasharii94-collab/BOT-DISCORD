@@ -5,9 +5,10 @@ const {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  ChannelType,
+  PermissionsBitField
 } = require("discord.js");
-const fs = require("fs");
 
 const client = new Client({
   intents: [
@@ -17,166 +18,122 @@ const client = new Client({
   ]
 });
 
-const PREFIX = "?";
-
-// ================= STORAGE =================
-const dataPath = "./data.json";
-if (!fs.existsSync(dataPath)) {
-  fs.writeFileSync(dataPath, JSON.stringify({}, null, 2));
-}
-
-function getGuildData(guildId) {
-  const data = JSON.parse(fs.readFileSync(dataPath));
-  if (!data[guildId]) {
-    data[guildId] = {
-      admins: [],
-      logChannel: null
-    };
-    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
-  }
-  return data[guildId];
-}
-
-function saveGuildData(guildId, newData) {
-  const data = JSON.parse(fs.readFileSync(dataPath));
-  data[guildId] = newData;
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
-}
-
-// ================= READY =================
 client.once("ready", () => {
   console.log(`Bot online: ${client.user.tag}`);
 });
 
-// ================= MESSAGE =================
+/* ================= MESSAGE ================= */
 client.on("messageCreate", async (message) => {
-  if (message.author.bot || !message.guild) return;
-  if (!message.content.startsWith(PREFIX)) return;
+  if (message.author.bot) return;
 
-  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
-  const command = args.shift().toLowerCase();
+  /* ===== OPEN TICKET ===== */
+  if (message.content === "?ticket") {
+    const guild = client.guilds.cache.get(process.env.GUILD_ID);
 
-  const guildData = getGuildData(message.guild.id);
-  const isAdmin = guildData.admins.includes(message.author.id);
+    const channel = await guild.channels.create({
+      name: `ticket-${message.author.username}`,
+      type: ChannelType.GuildText,
+      parent: process.env.CATEGORY_ID,
+      permissionOverwrites: [
+        {
+          id: guild.id,
+          deny: [PermissionsBitField.Flags.ViewChannel]
+        },
+        {
+          id: message.author.id,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages
+          ]
+        },
+        {
+          id: process.env.ADMIN_ID,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages
+          ]
+        }
+      ]
+    });
 
-  const embedData = JSON.parse(fs.readFileSync("./embed.json"));
-  const description = embedData.current || embedData.default;
-
-  // ================= HELP =================
-  if (command === "help") {
-    if (args[0] === "admin") {
-      if (!isAdmin) return message.reply("❌ Admin only.");
-
-      const adminHelp = new EmbedBuilder()
-        .setColor(0x2b2d31)
-        .setTitle("🛠 ADMIN COMMANDS")
-        .setDescription(
-          "`?setlog #channel`\nSet channel log\n\n" +
-          "`?addadmin <user_id>`\nTambah admin\n\n" +
-          "`?editembed`\nEdit embed produk\n\n" +
-          "`?ticket`\nPreview embed"
-        );
-
-      return message.reply({ embeds: [adminHelp] });
-    }
-
-    const help = new EmbedBuilder()
-      .setColor(0x2b2d31)
-      .setTitle("📖 BOT GUIDE")
-      .setDescription(
-        "`?ticket` — Buka order\n" +
-        "`?help` — Panduan bot"
-      );
-
-    return message.reply({ embeds: [help] });
-  }
-
-  // ================= SET LOG =================
-  if (command === "setlog") {
-    if (!isAdmin) return message.reply("❌ Admin only.");
-    const channel = message.mentions.channels.first();
-    if (!channel) return message.reply("❌ Tag channel log.");
-
-    guildData.logChannel = channel.id;
-    saveGuildData(message.guild.id, guildData);
-
-    return message.reply(`✅ Log channel diset ke ${channel}`);
-  }
-
-  // ================= ADD ADMIN =================
-  if (command === "addadmin") {
-    if (!isAdmin) return message.reply("❌ Admin only.");
-    const userId = args[0];
-    if (!userId) return message.reply("❌ Masukkan user ID.");
-
-    if (!guildData.admins.includes(userId)) {
-      guildData.admins.push(userId);
-      saveGuildData(message.guild.id, guildData);
-    }
-
-    return message.reply("✅ Admin berhasil ditambahkan.");
-  }
-
-  // ================= TICKET =================
-  if (command === "ticket") {
     const orderEmbed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setTitle("📦 ORDER MENU")
-      .setDescription(description);
+      .setTitle("📦 PILIH PAKET")
+      .setDescription(
+        "**Paket A**\n" +
+        "• Rp.20.000 — 1 Key / 1 Device\n\n" +
+        "**Paket B**\n" +
+        "• Rp.35.000 — 1 Key / hingga 5 Device\n" +
+        "**(Permanent)**\n\n" +
+        "**Benefit**\n" +
+        "• Full fitur\n" +
+        "• Stabil & smooth\n" +
+        "• Update gratis\n" +
+        "• Support prioritas\n" +
+        "• Device fleksibel\n\n" +
+        "**Silakan pilih paket di bawah.**"
+      )
+      .setFooter({ text: "Obsidian Shop • Pembayaran QRIS Manual" });
 
-    return message.reply({ embeds: [orderEmbed] });
-  }
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("paket_a")
+        .setLabel("Paket A — 20K")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId("paket_b")
+        .setLabel("Paket B — 35K")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId("close_ticket")
+        .setLabel("Close Ticket")
+        .setStyle(ButtonStyle.Danger)
+    );
 
-  // ================= EDIT EMBED =================
-  if (command === "editembed") {
-    if (!isAdmin) return message.reply("❌ Admin only.");
+    await channel.send({
+      content: `<@${message.author.id}>`,
+      embeds: [orderEmbed],
+      components: [row]
+    });
 
-    await message.reply("✏️ Kirim deskripsi embed baru (2 menit).");
-
-    try {
-      const collected = await message.channel.awaitMessages({
-        filter: m => m.author.id === message.author.id,
-        max: 1,
-        time: 120000,
-        errors: ["time"]
-      });
-
-      const newDesc = collected.first().content;
-      embedData.current = newDesc;
-      fs.writeFileSync("./embed.json", JSON.stringify(embedData, null, 2));
-
-      const preview = new EmbedBuilder()
-        .setColor(0x2b2d31)
-        .setTitle("🔍 PREVIEW EMBED")
-        .setDescription(newDesc);
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("reset_embed")
-          .setLabel("Reset ke Default")
-          .setStyle(ButtonStyle.Danger)
-      );
-
-      return message.reply({ embeds: [preview], components: [row] });
-    } catch {
-      return message.reply("⏰ Dibatalkan.");
-    }
+    return message.reply(`✅ Ticket dibuat: ${channel}`);
   }
 });
 
-// ================= BUTTON =================
+/* ================= BUTTON ================= */
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
 
-  if (interaction.customId === "reset_embed") {
-    const embedData = JSON.parse(fs.readFileSync("./embed.json"));
-    embedData.current = "";
-    fs.writeFileSync("./embed.json", JSON.stringify(embedData, null, 2));
+  /* ===== PILIH PAKET ===== */
+  if (interaction.customId === "paket_a") {
+    return interaction.reply(
+      "💳 Kamu memilih **Paket A (Rp.20.000)**\n" +
+      "Silakan lakukan pembayaran QRIS.\n" +
+      "Setelah bayar, kirim **bukti transfer** di sini."
+    );
+  }
 
-    return interaction.reply({
-      content: "♻️ Embed direset ke default.",
-      ephemeral: true
-    });
+  if (interaction.customId === "paket_b") {
+    return interaction.reply(
+      "💳 Kamu memilih **Paket B (Rp.35.000)**\n" +
+      "Silakan lakukan pembayaran QRIS.\n" +
+      "Setelah bayar, kirim **bukti transfer** di sini."
+    );
+  }
+
+  /* ===== CLOSE TICKET ===== */
+  if (interaction.customId === "close_ticket") {
+    if (interaction.user.id !== process.env.ADMIN_ID) {
+      return interaction.reply({
+        content: "❌ Hanya admin yang bisa menutup ticket.",
+        ephemeral: true
+      });
+    }
+
+    await interaction.reply("🔒 Ticket akan ditutup...");
+    setTimeout(() => {
+      interaction.channel.delete().catch(() => {});
+    }, 2000);
   }
 });
 
