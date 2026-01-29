@@ -7,8 +7,19 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5"
-  }
+    "discord.js": "^14.25.1",
+    "dotenv": "^16.6.1"
+  },
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hariasharii94-collab/BOT-DISCORD.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hariasharii94-collab/BOT-DISCORD/issues"
+  },
+  "homepage": "https://github.com/hariasharii94-collab/BOT-DISCORD#readme"
 }
-
